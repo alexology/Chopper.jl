@@ -1,0 +1,3 @@
+# Test inputs and chopper reference outputs must keep their exact bytes.
+test/data/** -text
+test/reference/** -text

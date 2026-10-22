@@ -1,0 +1,52 @@
+name = "Chopper"
+uuid = "e3c3bf4f-c391-4e81-9df4-036c5ab00a7f"
+version = "0.1.0"
+authors = ["Alex Laini"]
+license = "MIT"
+
+[deps]
+CodecZlibNG = "642d12eb-acb5-4437-bcfc-a25e07ad685c"
+FASTX = "c2308a5c-f048-11e8-3e8a-31650f418d12"
+Minimap2 = "0e7524eb-43f0-432d-96d8-0e057f6af913"
+PrecompileTools = "aea7be01-6a6a-4083-8856-8a6e6704d82a"
+StringViews = "354b36f9-a18e-4713-926e-db85100087ba"
+TranscodingStreams = "3bb67fe8-82b1-5028-8e26-92a6c54297fa"
+
+[sources]
+Minimap2 = {path = "../Minimap2.jl"}
+
+[weakdeps]
+CodecBzip2 = "523fee87-0ab8-5b00-afb7-3ecf72e48cfd"
+CodecXz = "ba30903b-d9e8-5048-a5ec-d1f5b0d4b47b"
+CodecZstd = "6b39b394-51ab-5f42-8807-6242bab2b4c2"
+
+[extensions]
+ChopperCodecBzip2Ext = "CodecBzip2"
+ChopperCodecXzExt = "CodecXz"
+ChopperCodecZstdExt = "CodecZstd"
+
+[compat]
+CodecBzip2 = "0.8"
+CodecXz = "0.7"
+CodecZlib = "0.7"
+CodecZlibNG = "0.2"
+CodecZstd = "0.8"
+FASTX = "2"
+Minimap2 = "0.1"
+PrecompileTools = "1"
+Random = "1"
+StringViews = "1, 2"
+Test = "1"
+TranscodingStreams = "0.10, 0.11"
+julia = "1.10"
+
+[extras]
+CodecBzip2 = "523fee87-0ab8-5b00-afb7-3ecf72e48cfd"
+CodecXz = "ba30903b-d9e8-5048-a5ec-d1f5b0d4b47b"
+CodecZlib = "944b1d66-785c-5afd-91f1-9de20f533193"
+CodecZstd = "6b39b394-51ab-5f42-8807-6242bab2b4c2"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test", "Random", "CodecBzip2", "CodecXz", "CodecZlib", "CodecZstd"]

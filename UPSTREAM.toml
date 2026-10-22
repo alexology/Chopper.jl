@@ -1,0 +1,19 @@
+name = "chopper"
+repository = "https://github.com/wdecoster/chopper"
+version = "0.14.1"
+# master at the time of the port: v0.14.1 plus dependency updates only
+# (`git diff v0.14.1 HEAD -- src` is empty).
+commit = "e64216b5782879d3b08dba0f51e6c5b1015e24cf"
+captured = "2026-10-21"
+license = "MIT"
+
+[oracle]
+# Reference outputs in test/reference/ (tools/make_reference.sh).
+binary = "https://github.com/wdecoster/chopper/releases/download/v0.14.1/chopper-linux"
+libc = "glibc 2.43 (Ubuntu, WSL2)"
+minimap2 = "2.30 (minimap2-sys 0.1.30, inside chopper; release binary for validation/)"
+
+[semantics]
+quality_encoding = "Phred+33 bytes"
+segments = "1-based UnitRange (chopper: 0-based half-open)"
+mean_quality = "-10 log10(mean error probability), Julia exp10/log10"
