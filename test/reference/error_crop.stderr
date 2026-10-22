@@ -1,0 +1,1 @@
+Error: When using the 'fixed-crop' trimming approach, at least one of --headcrop or --tailcrop must be greater than 0.

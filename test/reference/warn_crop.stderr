@@ -1,0 +1,3 @@
+Warning: --headcrop is set but is ignored by the selected trimming approach.
+Warning: --split-window is set but is ignored by the selected trimming approach.
+Kept 250 reads out of 250 reads

@@ -1,0 +1,2 @@
+Warning: --cutoff is set but is ignored because no --trim-approach was selected.
+Kept 225 reads out of 250 reads

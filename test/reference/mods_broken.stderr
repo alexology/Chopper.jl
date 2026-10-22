@@ -1,0 +1,2 @@
+Error: cannot update base modification tags of read broken: MM tag refers to more 'C' bases than the sequence contains; the tags do not describe this read
+Note: the output is incomplete. Rerun without --update-mods to write these tags through unchanged.

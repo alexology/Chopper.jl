@@ -1,0 +1,36 @@
+name	input	arguments
+default	test.fastq
+q10_l500	test.fastq	-q 10 -l 500
+qual_window	test.fastq	-q 5 --maxqual 12
+length_window	test.fastq	-l 100 --maxlength 1000
+gc_window	test.fastq	--mingc 0.38 --maxgc 0.42
+gc_testgc	testGC.fastq	--mingc 0.4 --maxgc 0.6
+gc_min_only	testGC.fastq	--mingc 0.5
+fixed_crop	test.fastq	--trim-approach fixed-crop --headcrop 10 --tailcrop 10 -l 100
+fixed_crop_head	test.fastq	--trim-approach fixed-crop --headcrop 300
+trim_by_quality	test.fastq	--trim-approach trim-by-quality --cutoff 10 -l 100
+trim_by_quality_q15	test.fastq	--trim-approach trim-by-quality --cutoff 15 -q 8
+best_segment	test.fastq	--trim-approach best-read-segment --cutoff 10 -l 100
+best_segment_q20	test.fastq	--trim-approach best-read-segment --cutoff 20
+split	test.fastq	--trim-approach split-by-low-quality --cutoff 15 -l 50
+split_window	test.fastq	--trim-approach split-by-low-quality --cutoff 15 --split-window 5 -l 50
+split_window0	test.fastq	--trim-approach split-by-low-quality --cutoff 12 --split-window 0 -l 20
+inverse_q10	test.fastq	--inverse -q 10
+inverse_split	test.fastq	--inverse -q 9 --trim-approach split-by-low-quality --cutoff 12 -l 30
+inverse_length	test.fastq	--inverse -l 1000 --maxlength 5000
+contam	test.fastq	-c random_contam.fa
+contam_inverse	test.fastq	-c random_contam.fa --inverse
+contam_other	other-test.fastq	-c random_contam.fa
+warn_cutoff	test.fastq	--cutoff 10 -q 9
+warn_crop	test.fastq	--trim-approach trim-by-quality --cutoff 7 --headcrop 5 --split-window 3
+error_crop	test.fastq	--trim-approach fixed-crop
+error_cutoff	test.fastq	--trim-approach best-read-segment
+headers_split	headers.fastq	--trim-approach split-by-low-quality --cutoff 3
+headers_plain	headers.fastq	-q 1
+mods_plain	mods.fastq	--trim-approach fixed-crop --headcrop 37 --tailcrop 25
+mods_fixed	mods.fastq	--trim-approach fixed-crop --headcrop 37 --tailcrop 25 --update-mods
+mods_split	mods.fastq	--trim-approach split-by-low-quality --cutoff 12 --update-mods -l 20
+mods_best	mods.fastq	--trim-approach best-read-segment --cutoff 14 --update-mods
+mods_untrimmed	mods.fastq	--update-mods
+mods_none	test.fastq	-q 12 --update-mods
+mods_broken	bad_mods.fastq	--trim-approach fixed-crop --headcrop 5 --update-mods

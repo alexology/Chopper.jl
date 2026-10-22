@@ -1,0 +1,2 @@
+Kept 146 reads out of 250 reads
+Warning: --update-mods is set but no read carried an MM tag. Did you keep the tags, e.g. `samtools fastq -T MM,ML,MN`?
