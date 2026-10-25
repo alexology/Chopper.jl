@@ -4,8 +4,12 @@ Filtering and trimming of long-read FASTQ files (Oxford Nanopore, PacBio) in
 native Julia: a port of [chopper](https://github.com/wdecoster/chopper) 0.14.1
 by Wouter De Coster (Rust; the successor of NanoFilt and NanoLyse). No
 external programs: the contamination screen, which chopper delegates to
-minimap2, uses [Minimap2.jl](../Minimap2.jl), a native port of the same
+minimap2, uses [Minimap2.jl](https://github.com/alexology/Minimap2.jl), a native port of the same
 minimap2 2.30.
+
+This package is part of an experimental effort to use AI to port
+bioinformatics and quantitative ecology packages to Julia, with the goal of
+creating a unified environment for high performance scientific computing.
 
 Reads are filtered on mean quality, length, GC content and similarity to
 contaminant sequences, then optionally trimmed with one of four strategies.
@@ -16,6 +20,17 @@ Julia ≥ 1.10 (tested with 1.12). Dependencies: FASTX.jl (FASTQ/FASTA parsing),
 CodecZlibNG.jl (gzip, via zlib-ng), TranscodingStreams.jl, StringViews.jl,
 PrecompileTools.jl. Optional: CodecBzip2, CodecXz, CodecZstd for bzip2, xz and
 zstd input.
+
+## Install from GitHub
+
+This package is not registered in the Julia General registry. Install it
+from GitHub together with its unregistered dependency:
+
+```julia
+using Pkg
+Pkg.add(url="https://github.com/alexology/Minimap2.jl")
+Pkg.add(url="https://github.com/alexology/Chopper.jl")
+```
 
 ## Installation
 
