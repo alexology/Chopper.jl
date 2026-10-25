@@ -93,6 +93,69 @@ Base.read(io::FailingIO, ::Integer) = (io.reads += 1; UInt8[0x41])
     end
 end
 
+@static if Sys.iswindows()
+    const GENERIC_READ = 0x80000000
+    # Opens `path` for reading, sharing it with readers only (no rename or delete).
+    lock_file(path) = ccall((:CreateFileW, "kernel32"), stdcall, Ptr{Cvoid},
+        (Cwstring, UInt32, UInt32, Ptr{Cvoid}, UInt32, UInt32, Ptr{Cvoid}),
+        path, GENERIC_READ, 0x00000001, C_NULL, 0x00000003, 0x00000000, C_NULL)
+    unlock_file(handle) = ccall((:CloseHandle, "kernel32"), stdcall, Cint, (Ptr{Cvoid},), handle)
+end
+
+@testset "Publishing the output" begin
+    mktempdir() do dir
+        path = joinpath(dir, "out.fastq")
+        # A failed rename never removes what is at the destination (`mv` with
+        # `force` deleted it and fell back to copying)
+        mkdir(path)
+        target = Chopper.OutputTarget(joinpath(dir, "new.fastq"))
+        write(target.temp, "replacement")
+        target = Chopper.OutputTarget(path, target.temp)
+        write(joinpath(path, "kept"), "kept")
+        @test_throws Base.IOError Chopper.publish(target)
+        @test read(joinpath(path, "kept"), String) == "kept"
+        Chopper.discard(target)
+        @test readdir(dir) == ["out.fastq"]
+        rm(path; recursive = true)
+        @static if Sys.iswindows()
+            # The temporary file or the output locked by another process
+            for locked in (:temp, :output)
+                write(path, "previous")
+                target = Chopper.OutputTarget(path)
+                write(target.temp, "replacement")
+                handle = lock_file(locked === :temp ? target.temp : path)
+                @test handle != Ptr{Cvoid}(-1)
+                try
+                    @test_throws Base.IOError Chopper.publish(target)
+                    @test read(path, String) == "previous"
+                    # Cleanup after the failure does not hide it
+                    @test Chopper.discard(target) === nothing
+                finally
+                    unlock_file(handle)
+                end
+                Chopper.discard(target)
+                @test readdir(dir) == ["out.fastq"]
+            end
+        end
+        @static if Sys.isunix()
+            # A new output gets the default permissions, not those of a private
+            # temporary file; a replaced one keeps its own
+            rm(path; force = true)
+            probe = joinpath(dir, "probe")
+            touch(probe)
+            target = Chopper.OutputTarget(path)
+            Chopper.publish(target)
+            @test filemode(path) & 0o777 == filemode(probe) & 0o777
+            chmod(path, 0o640)
+            target = Chopper.OutputTarget(path)
+            write(target.temp, "replacement")
+            Chopper.publish(target)
+            @test filemode(path) & 0o777 == 0o640
+            @test read(path, String) == "replacement"
+        end
+    end
+end
+
 # A source that never ends.
 struct EndlessIO <: IO end
 Base.eof(::EndlessIO) = false
@@ -106,5 +169,81 @@ Base.read(::EndlessIO, n::Integer) = fill(UInt8('A'), n)
         close(p)
         wait(p.task)
         @test istaskdone(p.task) && !istaskfailed(p.task)
+    end
+end
+
+using Random
+
+# Records the decompressor streams that `chopper` creates.
+function with_gzip_streams(f)
+    original = Chopper.DECOMPRESSORS[:gzip]
+    streams = Any[]
+    Chopper.DECOMPRESSORS[:gzip] = io -> push!(streams, original(io))[end]
+    try
+        f(streams)
+    finally
+        Chopper.DECOMPRESSORS[:gzip] = original
+    end
+end
+
+# An output whose writes fail, after signalling that they were reached.
+struct BrokenOutput <: IO
+    reached::Channel{Nothing}
+end
+Base.write(io::BrokenOutput, ::Vector{UInt8}) = (put!(io.reached, nothing); error("injected output failure"))
+Base.flush(::BrokenOutput) = nothing
+
+@testset "Release of the input" begin
+    released(stream) = stream.codec.zstream.state == C_NULL
+    good = transcode(GzipCompressor, codeunits("@r\nACGT\n+\nIIII\n"))
+    bad = transcode(GzipCompressor, codeunits("@r\nACGT\n+\nIII\n"))
+    with_gzip_streams() do streams
+        # The decompressor of a caller's stream is freed (its native memory has
+        # no finalizer), and the stream stays open
+        for threads in (1, 4), (data, ok) in ((good, true), (bad, false))
+            input = IOBuffer(data)
+            if ok
+                @test chopper(input, IOBuffer(); threads).reads == 1
+            else
+                @test_throws Exception chopper(input, IOBuffer(); threads)
+            end
+            @test released(pop!(streams))
+            @test isopen(input)
+        end
+        # A file opened by chopper is closed
+        mktempdir() do dir
+            path = joinpath(dir, "in.fq.gz")
+            write(path, good)
+            for threads in (1, 4)
+                chopper(path, IOBuffer(); threads)
+                stream = pop!(streams)
+                @test released(stream) && !isopen(stream.stream)
+            end
+            rm(path)
+        end
+        # A failure does not wait for a read of a caller's stream that waits for
+        # data: the read-ahead task stops, and frees the decompressor, when the
+        # stream is closed
+        if Threads.nthreads() > 1
+            raw = join("@r$i\n" * String(rand(MersenneTwister(i), collect(codeunits("ACGT")), 10_000)) *
+                       "\n+\n" * repeat("I", 10_000) * "\n" for i in 1:150)
+            source = Base.BufferStream()
+            write(source, transcode(GzipCompressor, codeunits(raw)))
+            output = BrokenOutput(Channel{Nothing}(1))
+            task = Threads.@spawn try
+                chopper(source, output; threads = 2, batch_reads = 1)
+            catch e
+                e
+            end
+            try
+                @test timedwait(() -> istaskdone(task), 30) == :ok
+                @test fetch(task) == ErrorException("injected output failure")
+                @test isopen(source)
+            finally
+                close(source)
+            end
+            stream = pop!(streams)
+            @test timedwait(() -> released(stream), 10) == :ok
+        end
     end
 end

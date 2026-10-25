@@ -188,9 +188,16 @@ closed). Returns the counts as a [`ChopperStats`](@ref).
 
 A path output is written to a temporary file in the same directory and
 renamed over `output` only when the run succeeds: after an error the file
-is missing or unchanged, never partial. Bytes already written to an `IO`
+is missing or unchanged, never partial, also when the rename itself fails
+(for example on a file locked by another program). A replaced file keeps
+its permissions. Bytes already written to an `IO`
 (such as `stdout`) cannot be taken back: after an error that output is
 incomplete.
+
+An `input` stream is not closed. Compressed input may be read ahead by a
+separate task: after an error `chopper` returns without waiting for a read
+of that stream still in progress (which could wait for data forever, as on
+a pipe); the task stops when the read returns or the stream is closed.
 
 Keywords:
 
@@ -237,8 +244,9 @@ function chopper(input, output = stdout; filter::Union{Nothing,ReadFilter} = not
     try
         instream = input isa IO ? open_fastq(input) : open_fastq(String(input))
         # Compressed input is decompressed by a separate task when there are
-        # threads to spare.
-        ahead = instream isa NoopStream || threads == 1 || Threads.nthreads() == 1 ? nothing : prefetch(instream)
+        # threads to spare; that task then releases `instream`.
+        ahead = instream isa NoopStream || threads == 1 || Threads.nthreads() == 1 ? nothing :
+                prefetch(instream, s -> release(s; owned = !(input isa IO)))
         out = target === nothing ? output : open_output(target)
         reader = FASTQ.Reader(ahead === nothing ? instream : NoopStream(ahead); copy = false)
         stats = run_batches(reader, out, cfg, Int(threads), Int(batch_reads), Int(batch_bases))
@@ -254,15 +262,25 @@ function chopper(input, output = stdout; filter::Union{Nothing,ReadFilter} = not
         if ahead !== nothing
             # After a complete run `eof` has already reported a producer error,
             # and a cancelled producer ends without one; after a failure the
-            # first error is the one reported.
+            # first error is the one reported. A caller's stream can keep the
+            # producer in a read that never returns (a pipe with no data):
+            # after a failure it is not waited for, and it ends once that
+            # read returns. Reads of a file always do.
             close(ahead)
+            if success || !(input isa IO)
+                try
+                    wait(ahead.task)
+                catch
+                    success && rethrow()
+                end
+            end
+        elseif instream !== nothing
             try
-                wait(ahead.task)
+                release(instream; owned = !(input isa IO))
             catch
                 success && rethrow()
             end
         end
-        input isa IO || instream === nothing || close(instream)
         target === nothing || out === nothing || close(out)
         target === nothing || success || discard(target)
     end

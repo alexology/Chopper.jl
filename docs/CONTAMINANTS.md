@@ -39,18 +39,20 @@ chopper's `test.fastq` (250 reads up to 77 kb, ~10% errors) against
 aligned).
 
 `validation/compare_contaminants.jl`, 20,000 ONT reads (ND2–COI amplicons,
-R10.4.1), minimap2 2.30 release binary and chopper 0.14.1 (`-t 1 -c`):
+R10.4.1), minimap2 2.30 release binary (`-x lr:hq -c --no-hash-name`) and
+chopper 0.14.1 (`-t 1 -c`):
 
 | Contaminants | Reads aligned (minimap2 / Julia) | Match length identical | Contaminants (chopper / Julia) | Output identical |
 |---|---|---|---|---|
 | 3 amplicon sequences of another sample | 15,761 / 15,761 | 20,000 / 20,000 | 0 / 0 | yes |
-| 32 amplicon sequences of the same and the other sample | 19,060 / 19,060 | 19,999 / 20,000 | 16,070 / 16,070 | yes |
+| 32 amplicon sequences of the same and the other sample | 19,060 / 19,060 | 20,000 / 20,000 | 16,070 / 16,070 | yes |
 
-The one difference (read `95b66141…`, 2,833 bases) is a Minimap2.jl
-discrepancy with minimap2 between two nearly tied references: minimap2
-reports the alignment to `final_consensus_11` (match length 2,498, fraction
-0.882), Minimap2.jl also the one to `final_consensus_20` (2,502, 0.883).
-Both are below the threshold. The case is recorded for Minimap2.jl.
+`--no-hash-name` matters: minimap2 breaks ties between equal chains with a
+hash seeded by the read name, and chopper, like Chopper.jl, maps reads
+without their names. Without the option one read (`95b66141…`, 2,833 bases,
+fraction 0.88 against two nearly tied references, below the threshold either
+way) has a different match length; it was first reported here as a
+Minimap2.jl discrepancy (2026-10-22: it is not one).
 
 Speed (20,000 reads, `chopper()` with 4 threads): 24 s with the 32
 amplicons and 24 s with the 3 of another species; chopper took 46 s and

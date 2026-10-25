@@ -2,7 +2,7 @@
 #
 #     julia -t 4 --project=. validation/compare_contaminants.jl reads.fq contaminants.fa minimap2.paf chopper_output.fq
 #
-# minimap2.paf: `minimap2 -x lr:hq -c contaminants.fa reads.fq` (minimap2
+# minimap2.paf: `minimap2 -x lr:hq -c --no-hash-name contaminants.fa reads.fq` (minimap2
 # 2.30, the version inside chopper 0.14.1); chopper_output.fq: `chopper -t 1
 # -c contaminants.fa -i reads.fq`. Reports the agreement of the match lengths
 # (largest over the alignments of a read), of the classification at 90%, and
@@ -26,7 +26,7 @@ function main(reads, contam, paf, chopper_out)
     end
     theirs = [get(mm2, n, 0) for n in names]
     d = ours .- theirs
-    pct(x) = string(round(100x / length(d); digits = 2), "%")
+    pct(x) = string(x, " (", round(100x / length(d); digits = 2), "%)")
     println("reads: ", length(d), "; aligned by minimap2: ", count(>(0), theirs), ", by Chopper.jl: ", count(>(0), ours))
     println("match length identical: ", pct(count(==(0), d)), "; within 5 bases: ", pct(count(x -> abs(x) <= 5, d)),
             "; within 1% of the read: ", pct(count(i -> abs(d[i]) <= 0.01 * length(seqs[i]), eachindex(d))))

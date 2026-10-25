@@ -19,5 +19,5 @@ run best -q 15 --trim-approach best-read-segment --cutoff 18 -l 500
 run gcinv --mingc 0.35 --maxgc 0.45 --inverse -q 12 --maxlength 3000
 gzip -cd "$reads" | head -n 80000 > "$out/r20k.fq"
 "$chopper" -t 1 -c "$contam" -i "$out/r20k.fq" > "$out/contam.fq"
-"$minimap2" -x lr:hq -c -t 4 "$contam" "$out/r20k.fq" > "$out/contam.paf" 2> /dev/null
+"$minimap2" -x lr:hq -c --no-hash-name -t 4 "$contam" "$out/r20k.fq" > "$out/contam.paf" 2> /dev/null
 md5sum "$out"/*.fq

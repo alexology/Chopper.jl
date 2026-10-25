@@ -67,6 +67,14 @@ function open_fastq(io::IO)
     return Base.invokelatest(decompressor(format), stream)
 end
 
+# Ends the use of a stream from `open_fastq`. If it wraps a caller's IO, only
+# the decompressor is freed (its native memory has no finalizer) and the IO
+# stays open; otherwise the stream is closed with the file below it.
+function release(stream::TranscodingStream; owned::Bool)
+    owned ? close(stream) : TranscodingStreams.finalize(stream.codec)
+    return nothing
+end
+
 # Decompression in a separate task, a few chunks ahead of the reader, so that
 # it overlaps with filtering; gzip decompression is otherwise the slowest
 # step. `PrefetchedInput` is a minimal read-only IO over the chunks.
@@ -74,7 +82,10 @@ end
 # The producer ends in one of three ways, kept distinct: the end of the
 # source (the task succeeds after the last chunk), a read error (the task
 # fails with it and the reader rethrows it) or a cancellation by `close`
-# from the reader (the task succeeds without reading further).
+# from the reader (the task succeeds without reading further; errors of the
+# read in progress are ignored). The source is read only by the producer,
+# which calls `done(source)` when it ends: a read that never returns cannot
+# be interrupted, and then the reader must not wait for it.
 mutable struct PrefetchedInput <: IO
     chunks::Channel{Vector{UInt8}}
     current::Vector{UInt8}
@@ -84,7 +95,7 @@ mutable struct PrefetchedInput <: IO
     PrefetchedInput(chunks) = new(chunks, UInt8[], 1, false)
 end
 
-function prefetch(source::IO; chunk_size::Int = 1 << 20, depth::Int = 8)
+function prefetch(source::IO, done = identity; chunk_size::Int = 1 << 20, depth::Int = 8)
     chunks = Channel{Vector{UInt8}}(depth)
     input = PrefetchedInput(chunks)
     input.task = Threads.@spawn begin
@@ -92,11 +103,13 @@ function prefetch(source::IO; chunk_size::Int = 1 << 20, depth::Int = 8)
             while !(@atomic input.cancelled) && !eof(source)
                 put!(chunks, read(source, chunk_size))
             end
-        catch e
-            # `put!` on the channel closed by the reader
-            (@atomic input.cancelled) && e isa InvalidStateException || rethrow()
+        catch
+            # `put!` on the channel closed by the reader, or a read cut short
+            # after the cancellation (a caller closing its stream)
+            (@atomic input.cancelled) || rethrow()
         finally
             close(chunks)
+            done(source)
         end
     end
     return input
@@ -175,13 +188,43 @@ function OutputTarget(path::AbstractString)
     dir = dirname(abspath(path))
     isdir(dir) || throw(ArgumentError("the output directory does not exist: $dir"))
     ispath(path) && !isfile(path) && return OutputTarget(path, nothing)
-    temp, io = mktemp(dir; cleanup = false)
-    close(io)
+    temp = new_temp(dir)
+    # Keep the permissions of a file being replaced, as writing it in place would
+    isfile(path) && Sys.isunix() && chmod(temp, filemode(path) & 0o7777)
     return OutputTarget(path, temp)
+end
+
+# An empty new file in `dir`, created with the permissions `open(path, "w")`
+# gives a new file (0o666 less the umask); `mktemp` would make it private.
+function new_temp(dir::AbstractString)
+    flags = Base.Filesystem.JL_O_WRONLY | Base.Filesystem.JL_O_CREAT | Base.Filesystem.JL_O_EXCL
+    while true
+        temp = tempname(dir; cleanup = false)
+        try
+            close(Base.Filesystem.open(temp, flags, 0o666))
+            return temp
+        catch e
+            e isa Base.IOError && e.code == Base.UV_EEXIST || rethrow()
+        end
+    end
 end
 
 open_output(t::OutputTarget) =
     open_output(something(t.temp, t.path); gzip = endswith(lowercase(t.path), ".gz"))
 
-publish(t::OutputTarget) = (t.temp === nothing || mv(t.temp, t.path; force = true); nothing)
-discard(t::OutputTarget) = (t.temp === nothing || rm(t.temp; force = true); nothing)
+# A single rename, which replaces `path` atomically or fails leaving it as it
+# was. `mv(...; force = true)` is not used: after a failed rename it deletes
+# `path` and falls back to copying, so an error could still replace the file.
+publish(t::OutputTarget) = (t.temp === nothing || Base.Filesystem.rename(t.temp, t.path); nothing)
+
+# Called after a failure: a temporary file that cannot be removed (still
+# locked by another process) is left behind rather than hiding that failure.
+function discard(t::OutputTarget)
+    t.temp === nothing && return nothing
+    try
+        rm(t.temp; force = true)
+    catch e
+        e isa Base.IOError || rethrow()
+    end
+    return nothing
+end
