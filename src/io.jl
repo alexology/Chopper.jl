@@ -215,7 +215,13 @@ open_output(t::OutputTarget) =
 # A single rename, which replaces `path` atomically or fails leaving it as it
 # was. `mv(...; force = true)` is not used: after a failed rename it deletes
 # `path` and falls back to copying, so an error could still replace the file.
-publish(t::OutputTarget) = (t.temp === nothing || Base.Filesystem.rename(t.temp, t.path); nothing)
+function publish(t::OutputTarget)
+    t.temp === nothing && return nothing
+    # Filesystem.rename in Julia 1.10 retries a failed rename with cp/rm.
+    err = ccall(:jl_fs_rename, Int32, (Cstring, Cstring), t.temp, t.path)
+    err < 0 && Base.uv_error("rename($(repr(t.temp)), $(repr(t.path)))", err)
+    nothing
+end
 
 # Called after a failure: a temporary file that cannot be removed (still
 # locked by another process) is left behind rather than hiding that failure.
