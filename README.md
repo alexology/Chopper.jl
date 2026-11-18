@@ -1,5 +1,7 @@
 # Chopper.jl
 
+[![Docs](https://img.shields.io/badge/docs-dev-blue.svg)](https://alexology.github.io/Chopper.jl/dev/)
+
 Filtering and trimming of long-read FASTQ files (Oxford Nanopore, PacBio) in
 native Julia: a port of [chopper](https://github.com/wdecoster/chopper) 0.14.1
 by Wouter De Coster (Rust; the successor of NanoFilt and NanoLyse). No
@@ -21,10 +23,10 @@ CodecZlibNG.jl (gzip, via zlib-ng), TranscodingStreams.jl, StringViews.jl,
 PrecompileTools.jl. Optional: CodecBzip2, CodecXz, CodecZstd for bzip2, xz and
 zstd input.
 
-## Install from GitHub
+## Installation
 
-This package is not registered in the Julia General registry. Install it
-from GitHub together with its unregistered dependency:
+This package is not registered in the Julia General registry, and neither
+is its dependency Minimap2.jl. Install both from GitHub, Minimap2.jl first:
 
 ```julia
 using Pkg
@@ -32,14 +34,10 @@ Pkg.add(url="https://github.com/alexology/Minimap2.jl")
 Pkg.add(url="https://github.com/alexology/Chopper.jl")
 ```
 
-## Installation
-
-The package is not registered. From a local copy:
-
-```julia
-using Pkg
-Pkg.develop(path = "path/to/Chopper.jl")
-```
+or, from local copies, `Pkg.develop(path = "path/to/Minimap2.jl")` and then
+`Pkg.develop(path = "path/to/Chopper.jl")`. With Julia ≥ 1.11 `Project.toml`
+also points to `../Minimap2.jl` (`[sources]`), so a checkout next to
+Minimap2.jl works directly.
 
 ## Command line
 
@@ -108,7 +106,7 @@ the reads failing a filter are written (and trimmed) instead.
 
 ## Differences from chopper
 
-Details in [docs/DIFFERENCES.md](docs/DIFFERENCES.md). In short:
+Details in [docs/src/DIFFERENCES.md](docs/src/DIFFERENCES.md). In short:
 
 - **deterministic output**: records are written in input order with any
   number of threads; chopper writes them in the order its threads finish
@@ -126,7 +124,7 @@ Details in [docs/DIFFERENCES.md](docs/DIFFERENCES.md). In short:
   alignment against contaminants;
 - **contaminants without the minimap2 binary**: Minimap2.jl maps the reads
   with the `lr:hq` preset as chopper's minimap2 crate does
-  ([docs/CONTAMINANTS.md](docs/CONTAMINANTS.md)).
+  ([docs/src/CONTAMINANTS.md](docs/src/CONTAMINANTS.md)).
 
 The mean quality uses Julia's `exp10` and `log10`, which can differ from the
 C library used by chopper in the last bit: only a read whose mean quality is
@@ -154,7 +152,7 @@ validation data).
   chopper 0.14.1): identical classification and output on chopper's test data and on 20,000 of
   those reads screened against amplicon sequences of the same sample (16,070
   contaminants) and of another sample (none); see
-  [docs/CONTAMINANTS.md](docs/CONTAMINANTS.md).
+  [docs/src/CONTAMINANTS.md](docs/src/CONTAMINANTS.md).
 
 Speed on the 200,000 reads (Windows 11, 4 cores; chopper in WSL on the same
 machine):

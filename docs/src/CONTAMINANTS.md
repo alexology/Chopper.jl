@@ -7,7 +7,7 @@ of the read length as matching bases. chopper maps every read with minimap2
 `Aligner::builder().preset(LrHq).with_cigar().with_index(fasta)`, and checks
 the "match length" (PAF column 10) of every reported alignment.
 
-Chopper.jl does the mapping with [Minimap2.jl](../../Minimap2.jl), a native
+Chopper.jl does the mapping with [Minimap2.jl](https://github.com/alexology/Minimap2.jl), a native
 Julia port of minimap2 2.30, configured in the same way (`src/contaminants.jl`):
 
 1. **Index** (`ContaminantIndex`): `MinimapIndex` of the contaminant

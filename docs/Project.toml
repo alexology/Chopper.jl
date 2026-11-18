@@ -1,0 +1,9 @@
+[deps]
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+Chopper = "e3c3bf4f-c391-4e81-9df4-036c5ab00a7f"
+
+[compat]
+Documenter = "1"
+
+[sources]
+Chopper = {path = ".."}

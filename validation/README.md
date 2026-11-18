@@ -27,4 +27,4 @@ minimap2, the classification at 90%, and the output with chopper's.
 Results on 2026-10-21 (200,000 R10.4.1 reads, dorado hac 5.2.0, of an ND2–COI
 metabarcoding run; contaminants: savont amplicon sequences of the same and of
 another sample): every output identical, see the README and
-[docs/CONTAMINANTS.md](../docs/CONTAMINANTS.md).
+[docs/src/CONTAMINANTS.md](../docs/src/CONTAMINANTS.md).
